@@ -1,12 +1,30 @@
 import cv2 as cv
 import sys
+import signal
+from os import system, name
+
+def clear():
+    # for windows
+    if name == 'nt':
+        system('cls')
+    # for mac & linux
+    else:
+        system('clear')
+
+# called on ctrl+c
+def signal_handler(signal, frame):
+    clear()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 class Output:
-    row = 48
-    column = 128
-    pixel_per_row = 0
-    pixel_per_column = 0
-    pixel_square_size = 0
+    def __init__(self, row, column):
+        self.row = row
+        self.column = column
+        self.pixel_per_row = 0
+        self.pixel_per_column = 0
+        self.pixel_square_size = 0
 
 class Frame:
     data = []
@@ -14,19 +32,41 @@ class Frame:
     h = 0
 
 class Symbols:
-    def __init__(self, category):
-        symbols = ""
-        if category == 'raw':
-            symbols = ' .:-=+*#%@'
-        elif category == 'reversed':
-            symbols = '@%#*+=-:. '
+    def __init__(self, reverse):
+        self.data = [char for char in ' .:-=+*#%@']
+        if reverse:
+            self.data.reverse()
 
-        self.data = [char for char in symbols]
         self.step = 255/len(self.data)
 
-output = Output()
+class Args:
+    row = 48
+    column = 128
+    reverse = False
+    flip = False
+
+args = Args()
+
+for i in range(1, len(sys.argv)):
+    arg = sys.argv[i]
+    try:
+        arg = int(arg)
+
+        # Get next arg
+        i += 1
+        arg2 = int(sys.argv[i])
+
+        args.row = arg
+        args.column = arg2
+    except:
+        if arg == 'reverse':
+            args.reverse = True
+        elif arg == 'flip':
+            args.flip = True
+
+output = Output(args.row, args.column)
 frame = Frame()
-symbols = Symbols('raw')
+symbols = Symbols(args.reverse)
 
 def frameToGray(frame_data):
     return cv.cvtColor(frame_data, cv.COLOR_BGR2GRAY)
@@ -43,7 +83,7 @@ def getAvgGray(x, y, w, h):
             total_gray += gray_line[j]
     return int(total_gray/output.pixel_square_size)
 
-def toASCII():
+def toASCII(): 
     ascii_frame = ""
     for i in range(0, output.row):
         y = i*output.pixel_per_row
@@ -53,29 +93,14 @@ def toASCII():
                 getAvgGray(x, y, output.pixel_per_column, output.pixel_per_row)
             )
         ascii_frame += '\n'
-
+    
     print(ascii_frame)
 
+    # Move the console cursor up to rewrite on the output
     for _ in range(output.row + 1):
         sys.stdout.write("\x1b[A")
 
-cap = cv.VideoCapture(0)
-if not cap.isOpened():
-    print("Cannot open camera")
-    exit()
-
-while True:
-    # Capture frame-by-frame
-    ret, frame.data = cap.read()
-    if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
-
-    frame.data = frameToGray(frame.data)
-
-    # cv.flip(gray, 1)
-    # cv.imshow('frame', gray) # Display the webcam frames
-
+def setValues():
     frame.w = len(frame.data[0])
     frame.h = len(frame.data)
 
@@ -83,10 +108,37 @@ while True:
     output.pixel_per_column = int(frame.w/output.column)
     output.pixel_square_size = output.pixel_per_row*output.pixel_per_column
 
-    toASCII()
+capture = cv.VideoCapture(0)
+if not capture.isOpened():
+    print("Cannot open camera")
+    exit()
+    
+clear()
 
-    if cv.waitKey(20) == ord('q'):
+first_iteration = True
+
+while True:
+    # Capture frame-by-frame
+    ret, frame.data = capture.read()
+    if not ret:
+        print("Can't receive frame (stream end?). Exiting ...")
         break
 
-cap.release()
+    frame.data = frameToGray(frame.data)
+
+    if args.flip:
+        frame.data = cv.flip(frame.data, 1)
+        
+    # Display the webcam frames
+    # cv.imshow('frame', gray)
+
+    # Webcam dimensions will never change
+    if first_iteration:
+        setValues()
+        first_iteration = False
+
+    toASCII()
+
+clear()
+capture.release()
 cv.destroyAllWindows()
