@@ -5,6 +5,10 @@ Display your webcam in ASCII in your terminal
 It's me in ASCII:
 ![me in ascii](me_ascii.png)
 
+Inspired from: 
+- https://github.com/uvipen/ASCII-generator
+- https://github.com/micodeyt/ascii-webcam
+
 ## Requirements
 
 - python 3
