@@ -59,9 +59,9 @@ for i in range(1, len(sys.argv)):
         args.row = arg
         args.column = arg2
     except:
-        if arg == 'reverse':
+        if arg == '-r':
             args.reverse = True
-        elif arg == 'flip':
+        elif arg == '-f':
             args.flip = True
 
 output = Output(args.row, args.column)
